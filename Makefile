@@ -174,13 +174,20 @@ UPROGS=\
 	_kill\
 	_ln\
 	_ls\
+	_lsx\
 	_mkdir\
 	_rm\
 	_sh\
 	_stressfs\
 	_usertests\
+	_uptime\
 	_wc\
 	_zombie\
+	_diskfree\
+	_trace\
+	_notrace\
+	_uptimex\
+	_psmem\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)

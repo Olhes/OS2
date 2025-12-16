@@ -342,6 +342,7 @@ scheduler(void)
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
+      p->context_switches++;  // Increment context switch counter
 
       swtch(&(c->scheduler), p->context);
       switchkvm();
@@ -531,4 +532,132 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+// Helper function to convert int to string
+static int snprintf_int(char *buf, int val);
+
+// Function to get process information for psinfo
+int
+get_proc_info(char *buf, int sz)
+{
+  struct proc *p;
+  int len = 0;
+  
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->state == UNUSED)
+      continue;
+    
+    // Simple format: pid state name size
+    // Use cprintf to format into buffer manually
+    char temp[100];
+    char state[10];
+    
+    switch(p->state){
+      case UNUSED:   safestrcpy(state, "UNUSED", sizeof(state)); break;
+      case EMBRYO:   safestrcpy(state, "EMBRYO", sizeof(state)); break;
+      case SLEEPING: safestrcpy(state, "SLEEP", sizeof(state)); break;
+      case RUNNABLE: safestrcpy(state, "RUNBL", sizeof(state)); break;
+      case RUNNING:  safestrcpy(state, "RUN", sizeof(state)); break;
+      case ZOMBIE:   safestrcpy(state, "ZOMBIE", sizeof(state)); break;
+    }
+    
+    // Manual string building to avoid snprintf issues
+    int temp_len = 0;
+    
+    // Add pid
+    int pid_val = p->pid;
+    if(pid_val == 0) {
+      temp[temp_len++] = '0';
+    } else {
+      // Convert pid to string
+      char digits[10];
+      int d = 0;
+      while(pid_val > 0) {
+        digits[d++] = '0' + (pid_val % 10);
+        pid_val /= 10;
+      }
+      // Reverse digits
+      for(int i = d-1; i >= 0; i--) {
+        temp[temp_len++] = digits[i];
+      }
+    }
+    
+    temp[temp_len++] = ' ';
+    
+    // Add state
+    char *s = state;
+    while(*s && temp_len < sizeof(temp)-1) {
+      temp[temp_len++] = *s++;
+    }
+    
+    temp[temp_len++] = ' ';
+    
+    // Add name
+    char *n = p->name;
+    while(*n && temp_len < sizeof(temp)-1) {
+      temp[temp_len++] = *n++;
+    }
+    
+    temp[temp_len++] = ' ';
+    
+    // Add size
+    int size_val = p->sz;
+    if(size_val == 0) {
+      temp[temp_len++] = '0';
+    } else {
+      // Convert size to string
+      char digits[10];
+      int d = 0;
+      while(size_val > 0) {
+        digits[d++] = '0' + (size_val % 10);
+        size_val /= 10;
+      }
+      // Reverse digits
+      for(int i = d-1; i >= 0; i--) {
+        temp[temp_len++] = digits[i];
+      }
+    }
+    
+    temp[temp_len++] = '\n';
+    temp[temp_len] = '\0';
+    
+    // Copy to output buffer if space
+    if(len + temp_len < sz) {
+      safestrcpy(buf + len, temp, sz - len);
+      len += temp_len;
+    } else {
+      break;
+    }
+  }
+  release(&ptable.lock);
+  return len;
+}
+
+// Helper function to convert int to string
+static int
+snprintf_int(char *buf, int val)
+{
+  if(val == 0) {
+    buf[0] = '0';
+    buf[1] = '\0';
+    return 1;
+  }
+  
+  int i = 0;
+  int temp = val;
+  char digits[10];
+  
+  while(temp > 0) {
+    digits[i++] = '0' + (temp % 10);
+    temp /= 10;
+  }
+  
+  // Reverse the digits
+  for(int j = 0; j < i; j++) {
+    buf[j] = digits[i - 1 - j];
+  }
+  buf[i] = '\0';
+  return i;
 }

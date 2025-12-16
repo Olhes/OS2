@@ -6,6 +6,45 @@
 #include "proc.h"
 #include "x86.h"
 #include "syscall.h"
+#include "spinlock.h"
+
+// Global flag to enable/disable tracing
+static int syscall_trace_enabled = 0;
+
+// Array of system call names for printing
+static char* syscall_names[] = {
+  [SYS_fork]    "fork",
+  [SYS_exit]    "exit",
+  [SYS_wait]    "wait",
+  [SYS_pipe]    "pipe",
+  [SYS_read]    "read",
+  [SYS_kill]    "kill",
+  [SYS_exec]    "exec",
+  [SYS_fstat]   "fstat",
+  [SYS_chdir]   "chdir",
+  [SYS_dup]     "dup",
+  [SYS_getpid]  "getpid",
+  [SYS_sbrk]    "sbrk",
+  [SYS_sleep]   "sleep",
+  [SYS_uptime]  "uptime",
+  [SYS_open]    "open",
+  [SYS_write]   "write",
+  [SYS_mknod]   "mknod",
+  [SYS_unlink]  "unlink",
+  [SYS_link]    "link",
+  [SYS_mkdir]   "mkdir",
+  [SYS_close]   "close",
+  [SYS_trace]   "trace",
+  [SYS_psinfo]  "psinfo",
+};
+
+// Function to get system call name
+static char* syscall_name(int num) {
+  if (num > 0 && num < NELEM(syscall_names) && syscall_names[num]) {
+    return syscall_names[num];
+  }
+  return "unknown";
+}
 
 // User code makes a system call with INT T_SYSCALL.
 // System call number in %eax.
@@ -103,6 +142,20 @@ extern int sys_unlink(void);
 extern int sys_wait(void);
 extern int sys_write(void);
 extern int sys_uptime(void);
+extern int sys_trace(void);
+extern int sys_psinfo(void);
+extern int sys_fsinfo(void);
+
+// System call to enable/disable tracing
+int sys_trace(void) {
+  int enable;
+  if (argint(0, &enable) < 0)
+    return -1;
+  acquire(&tickslock);
+  syscall_trace_enabled = enable ? 1 : 0;
+  release(&tickslock);
+  return 0;
+}
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -126,6 +179,16 @@ static int (*syscalls[])(void) = {
 [SYS_link]    sys_link,
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
+[SYS_trace]   sys_trace,
+[SYS_psinfo]  sys_psinfo,
+[SYS_fsinfo]  sys_fsinfo,
+[25]          0,  // Extra space
+[26]          0,  // Extra space
+[27]          0,  // Extra space
+[28]          0,  // Extra space
+[29]          0,  // Extra space
+[30]          0,  // Extra space
+[31]          0,  // Extra space
 };
 
 void
@@ -136,7 +199,27 @@ syscall(void)
 
   num = curproc->tf->eax;
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
+    // Log system call if tracing is enabled
+    if (syscall_trace_enabled) {
+      cprintf("pid %d: syscall %s (", curproc->pid, syscall_name(num));
+      // Print arguments (up to 3 for most system calls)
+      for (int i = 0; i < 3; i++) {
+        int arg;
+        if (fetchint((curproc->tf->esp) + 4 + 4*(i+1), &arg) >= 0) {
+          if (i > 0) cprintf(", ");
+          cprintf("%x", arg);
+        }
+      }
+      cprintf(")\n");
+    }
+    
+    // Execute the system call
     curproc->tf->eax = syscalls[num]();
+    
+    // Log return value if tracing is enabled
+    if (syscall_trace_enabled) {
+      cprintf("pid %d: %s -> %d\n", curproc->pid, syscall_name(num), curproc->tf->eax);
+    }
   } else {
     cprintf("%d %s: unknown sys call %d\n",
             curproc->pid, curproc->name, num);
