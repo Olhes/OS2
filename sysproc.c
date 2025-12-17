@@ -14,6 +14,7 @@ extern struct {
   struct proc proc[NPROC];
 } ptable;
 
+extern int syscall_counts[];
 int
 sys_fork(void)
 {
@@ -154,4 +155,24 @@ sys_psinfo(void)
   release(&ptable.lock);
   
   return proc_count;
+}
+int
+sys_getcount(void)
+{
+  int id;
+  // Obtener el primer argumento del stack (el ID de syscall que pide el usuario)
+  if (argint(0, &id) < 0)
+    return -1;
+
+  // Se asume que el ID válido va de 1 hasta el número máximo de syscalls (ej. 25)
+  // Usaremos 26 como límite, ya que SYS_getcount es 25.
+  if (id > 0 && id <= 25) { 
+    // NOTA: Si NSYSCALLS está definido en un .h, usa "id < NSYSCALLS"
+    
+    // Devuelve el valor del contador de invocaciones para ese ID
+    return syscall_counts[id];
+  }
+  
+  // Si el ID es 0 o mayor que el máximo, devuelve -1 (error)
+  return -1;
 }
