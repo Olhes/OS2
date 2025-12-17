@@ -188,6 +188,7 @@ UPROGS=\
 	_notrace\
 	_uptimex\
 	_psmem\
+	_sysstat\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)

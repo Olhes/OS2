@@ -23,3 +23,4 @@
 #define SYS_trace  22
 #define SYS_psinfo 23
 #define SYS_fsinfo 24
+#define SYS_getcount 25

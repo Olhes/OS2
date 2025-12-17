@@ -10,7 +10,6 @@
 
 // Global flag to enable/disable tracing
 static int syscall_trace_enabled = 0;
-
 // Array of system call names for printing
 static char* syscall_names[] = {
   [SYS_fork]    "fork",
@@ -37,7 +36,7 @@ static char* syscall_names[] = {
   [SYS_trace]   "trace",
   [SYS_psinfo]  "psinfo",
 };
-
+int syscall_counts[NELEM(syscall_names)];
 // Function to get system call name
 static char* syscall_name(int num) {
   if (num > 0 && num < NELEM(syscall_names) && syscall_names[num]) {
@@ -145,6 +144,7 @@ extern int sys_uptime(void);
 extern int sys_trace(void);
 extern int sys_psinfo(void);
 extern int sys_fsinfo(void);
+extern int sys_getcount(void);
 
 // System call to enable/disable tracing
 int sys_trace(void) {
@@ -182,7 +182,7 @@ static int (*syscalls[])(void) = {
 [SYS_trace]   sys_trace,
 [SYS_psinfo]  sys_psinfo,
 [SYS_fsinfo]  sys_fsinfo,
-[25]          0,  // Extra space
+[SYS_getcount] sys_getcount,
 [26]          0,  // Extra space
 [27]          0,  // Extra space
 [28]          0,  // Extra space
@@ -200,6 +200,7 @@ syscall(void)
   num = curproc->tf->eax;
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
     // Log system call if tracing is enabled
+    syscall_counts[num]++;
     if (syscall_trace_enabled) {
       cprintf("pid %d: syscall %s (", curproc->pid, syscall_name(num));
       // Print arguments (up to 3 for most system calls)
@@ -226,3 +227,5 @@ syscall(void)
     curproc->tf->eax = -1;
   }
 }
+
+
