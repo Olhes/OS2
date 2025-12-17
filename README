@@ -22,7 +22,7 @@ Para compilar el proyecto desde cero y probar la funcionalidad, siga estos pasos
 
 git clone https://github.com/Olhes/OS2.git
 
-git checkout master
+git checkout master(rama principal)
 
 make
 
