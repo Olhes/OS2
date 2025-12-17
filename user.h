@@ -27,6 +27,8 @@ int trace(int);
 int psinfo(void);  // Simplified version without parameters
 int fsinfo(void);  // Filesystem information
 
+int getcount(int);
+
 // ulib.c
 int stat(const char*, struct stat*);
 char* strcpy(char*, const char*);
